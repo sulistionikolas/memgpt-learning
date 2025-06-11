@@ -1,28 +1,32 @@
 """
 function_executor.py
 
-Interprets function-like commands from the LLM and routes them to the appropriate handlers.
-This simulates MemGPT's ability to control memory and perform tool-augmented tasks.
-
-Supported functions:
-- search_recall(query)
-- summarize(text)
+Dispatches LLM-generated function calls to real implementations.
+Currently supports updating and retrieving working context.
 """
 
+from memory.working_context import WorkingContext
 from memory.recall_storage import search_recall
 
-def execute_function(function_call: dict) -> str:
-    func = function_call.get("function")
-    args = function_call.get("args", {})
+def execute_function(call: dict, working_context: WorkingContext) -> str:
+    func = call.get("function")
+    
+    if func == "update_working_context":
+        key = call.get("key")
+        value = call.get("value")
+        if not key or not value:
+            return "❌ Missing 'key' or 'value' in update_working_context"
+        working_context.set_fact(key, value)
+        return f"✅ Working context updated: {key} = {value}"
 
-    if func == "search_recall":
-        query = args.get("query", "")
-        results = search_recall(query)
-        return "\\n".join(results) if results else "(No matching recall entries found.)"
+    elif func == "get_working_context":
+        return working_context.get_prompt_text()
 
-    elif func == "summarize":
-        text = args.get("text", "")
-        return f"(Summary placeholder for: '{text[:50]}...')"
+    elif func == "search_recall":
+        keyword = call.get("keyword")
+        if not keyword:
+            return "❌ Missing 'keyword' in search_recall"
+        results = search_recall(keyword)
+        return "\\n".join(results) if results else "No relevant recall entries found."
 
-    else:
-        return f"Unknown function: {func}"
+    return f"❌ Unknown function: {func}"

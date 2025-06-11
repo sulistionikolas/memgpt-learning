@@ -1,27 +1,25 @@
 """
 prompt_compiler.py
 
-Constructs the full prompt sent to the LLM, structured by memory tiers:
-- System Instructions
-- Working Context (historical memory)
-- User Input (active query)
-
-This reflects MemGPT's architecture where each memory section is clearly delineated.
+Constructs the full prompt to be sent to the LLM using structured memory tiers:
+- Static system instructions
+- Working context (editable facts)
+- FIFO queue (short-term message history)
+- User input (latest query)
 """
 
 from prompt.system_instructions import SYSTEM_INSTRUCTIONS
-from memory.context import WorkingContext
+from memory.working_context import WorkingContext
+from memory.fifo_queue import FIFOQueue
 
-def compile_prompt(user_prompt: str, context: WorkingContext) -> str:
+def compile_prompt(user_prompt: str, working_context: WorkingContext, fifo_queue: FIFOQueue) -> str:
     """
-    Builds a structured prompt with:
-    - System instructions
-    - Historical working memory
-    - Latest user question
+    Builds a complete structured prompt with all memory tiers.
     """
-    prompt_parts = [
-        "### System Instructions:\\n" + SYSTEM_INSTRUCTIONS.strip(),
-        "### Working Context (Memory):\\n" + str(context).strip(),
-        "### User Prompt:\\n[User] " + user_prompt.strip()
+    sections = [
+        "### System Instructions\\n" + SYSTEM_INSTRUCTIONS.strip(),
+        "### Working Context (Editable Facts)\\n" + working_context.get_prompt_text(),
+        "### FIFO Queue (Conversation History)\\n" + fifo_queue.get_prompt_text(),
+        "### User Prompt\\n[User] " + user_prompt.strip()
     ]
-    return "\\n\\n".join([part for part in prompt_parts if part])
+    return "\\n\\n".join(sections)
